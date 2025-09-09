@@ -1,0 +1,11 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-bg: #f6f1e8;
+}
+
+html, body, #root {
+  height: 100%;
+}
