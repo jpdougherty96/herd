@@ -55,7 +55,6 @@ export default function BulletinList() {
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold">HERD Bulletin Board</h1>
         <div className="flex gap-4">
-          {/* 'My Listings' intentionally removed (it's already in the navbar) */}
           <Link to="/bulletin/new" className="underline">Post a Listing</Link>
         </div>
       </div>
@@ -87,32 +86,35 @@ export default function BulletinList() {
         <>
           <p className="text-sm text-gray-600 mb-2">{count} result{count === 1 ? "" : "s"}</p>
           <ul className="divide-y">
-            {rows.map(r => (
-              <li key={r.id} className="py-3">
-                <Link to={`/bulletin/${r.id}`} className="block">
-                  <div className="flex gap-3">
-                    {r.bulletin_photos?.[0]?.secure_url ? (
-                      <img
-                        src={r.bulletin_photos[0].secure_url}
-                        alt=""
-                        className="w-24 h-24 object-cover rounded"
-                      />
-                    ) : (
-                      <div className="w-24 h-24 bg-gray-100 rounded" />
-                    )}
-                    <div className="flex-1">
-                      <div className="font-semibold uppercase">{r.title}</div>
-                      <div className="text-xs text-gray-700 mb-1">{sellerLine(r)}</div>
-                      <div className="text-sm text-gray-600 truncate">{r.body}</div>
-                      <div className="text-sm">
-                        {r.city}, {r.state}
-                        {r.price ? ` · $${Number(r.price).toLocaleString()}` : ""}
+            {rows.map(r => {
+              const first = (r.bulletin_photos || []).slice().sort((a,b)=>a.sort_order-b.sort_order)[0];
+              return (
+                <li key={r.id} className="py-3">
+                  <Link to={`/bulletin/${r.id}`} className="block">
+                    <div className="flex gap-3">
+                      {first ? (
+                        <img
+                          src={first.secure_url}
+                          alt={first.alt || r.title || ""}
+                          className="w-24 h-24 object-cover rounded"
+                        />
+                      ) : (
+                        <div className="w-24 h-24 bg-gray-100 rounded" />
+                      )}
+                      <div className="flex-1">
+                        <div className="font-semibold uppercase">{r.title}</div>
+                        <div className="text-xs text-gray-700 mb-1">{sellerLine(r)}</div>
+                        <div className="text-sm text-gray-600 truncate">{r.body}</div>
+                        <div className="text-sm">
+                          {r.city}, {r.state}
+                          {r.price ? ` · $${Number(r.price).toLocaleString()}` : ""}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </Link>
-              </li>
-            ))}
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         </>
       )}

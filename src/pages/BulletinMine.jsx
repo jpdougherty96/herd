@@ -39,25 +39,28 @@ export default function BulletinMine() {
         </div>
       ) : (
         <ul className="divide-y">
-          {rows.map(r => (
-            <li key={r.id} className="py-3">
-              <div className="flex gap-3 items-start">
-                {(r.bulletin_photos?.[0]?.secure_url)
-                  ? <img src={r.bulletin_photos[0].secure_url} alt="" className="w-24 h-24 object-cover" />
-                  : <div className="w-24 h-24 bg-gray-100" />
-                }
-                <div className="flex-1">
-                  <Link to={`/bulletin/${r.id}`} className="font-semibold uppercase">{r.title}</Link>
-                  <div className="text-sm">{r.city}, {r.state} {r.price ? `· $${Number(r.price).toLocaleString()}` : ""}</div>
-                  <div className="text-xs text-gray-500">{new Date(r.created_at).toLocaleString()}</div>
+          {rows.map(r => {
+            const first = (r.bulletin_photos || []).slice().sort((a,b)=>a.sort_order-b.sort_order)[0];
+            return (
+              <li key={r.id} className="py-3">
+                <div className="flex gap-3 items-start">
+                  {first
+                    ? <img src={first.secure_url} alt={first.alt || r.title || ""} className="w-24 h-24 object-cover" />
+                    : <div className="w-24 h-24 bg-gray-100" />
+                  }
+                  <div className="flex-1">
+                    <Link to={`/bulletin/${r.id}`} className="font-semibold uppercase">{r.title}</Link>
+                    <div className="text-sm">{r.city}, {r.state} {r.price ? `· $${Number(r.price).toLocaleString()}` : ""}</div>
+                    <div className="text-xs text-gray-500">{new Date(r.created_at).toLocaleString()}</div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button className="border px-3 py-1" onClick={() => nav(`/bulletin/${r.id}/edit`)}>Edit</button>
+                    <button className="border px-3 py-1 text-red-600" onClick={() => onDelete(r.id)}>Delete</button>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <button className="border px-3 py-1" onClick={() => nav(`/bulletin/${r.id}/edit`)}>Edit</button>
-                  <button className="border px-3 py-1 text-red-600" onClick={() => onDelete(r.id)}>Delete</button>
-                </div>
-              </div>
-            </li>
-          ))}
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

@@ -43,14 +43,15 @@ export default function BulletinDetail() {
   const posterName = listing.poster_name || (listing.user_id?.slice(0,8) + "…");
   const posterFarm = listing.poster_farm || "";
   const threadLink = `/messages?listing=${listing.id}&user=${listing.user_id}`;
-  const photos = (listing.bulletin_photos || []).sort((a,b)=>a.sort_order-b.sort_order);
+  const photos = (listing.bulletin_photos || []).slice().sort((a,b)=>a.sort_order-b.sort_order);
 
   async function onSend(e) {
     e.preventDefault();
     const body = message.trim();
     if (!body) return;
     setSending(true);
-    try { await sendMessage({ listing_id: listing.id, recipient_id: listing.user_id, body });
+    try {
+      await sendMessage({ listing_id: listing.id, recipient_id: listing.user_id, body });
       setMessage(""); setMessageSent(true); setHasThread(true);
     } finally { setSending(false); }
   }
@@ -80,7 +81,14 @@ export default function BulletinDetail() {
 
       {photos.length > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-4">
-          {photos.map(p => <img key={p.secure_url} src={p.secure_url} alt={p.alt || ""} className="w-full h-44 object-cover" />)}
+          {photos.map((p, idx) => (
+            <img
+              key={p.public_id || p.secure_url || idx}
+              src={p.secure_url}
+              alt={p.alt || listing.title || ""}
+              className="w-full h-44 object-cover"
+            />
+          ))}
         </div>
       )}
 

@@ -27,16 +27,13 @@ export default function BulletinEdit() {
     zip: ""
   });
 
-  // existing photos already on the listing
   const [existingPhotos, setExistingPhotos] = useState([]); // [{public_id, secure_url, alt, sort_order}]
-  // newly added photos in this edit session
   const [newPhotos, setNewPhotos] = useState([]); // [{public_id, secure_url, alt}]
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [prefillMsg, setPrefillMsg] = useState("");
 
-  // Load listing
   useEffect(() => {
     (async () => {
       try {
@@ -52,13 +49,12 @@ export default function BulletinEdit() {
           state: data.state || "",
           zip: data.zip || ""
         }));
-        const photos = (data.bulletin_photos || []).sort((a, b) => a.sort_order - b.sort_order);
-        // Normalize missing fields
+        const photos = (data.bulletin_photos || []).slice().sort((a, b) => a.sort_order - b.sort_order);
         setExistingPhotos(
           photos.map((p, i) => ({
             public_id: p.public_id,
             secure_url: p.secure_url,
-            alt: p.alt || "",
+            alt: p.alt || data.title || "",
             sort_order: i
           }))
         );
@@ -71,7 +67,6 @@ export default function BulletinEdit() {
     })();
   }, [id]);
 
-  // If listing has no city/state, prefill from user profile (still editable)
   useEffect(() => {
     (async () => {
       if (!form.city && !form.state) {
@@ -92,13 +87,11 @@ export default function BulletinEdit() {
             }));
             setPrefillMsg("City/State prefilled from your profile. You can edit below.");
           }
-        } catch {
-          /* ignore prefill errors */
-        }
+        } catch { /* ignore */ }
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading]); // run once after listing is loaded
+  }, [loading]);
 
   const totalPhotos = useMemo(
     () => existingPhotos.length + newPhotos.length,
@@ -125,17 +118,16 @@ export default function BulletinEdit() {
 
     setSaving(true);
     try {
-      // Rebuild unified photos array with new sort order
       const orderedExisting = existingPhotos.map((p, i) => ({
         public_id: p.public_id,
         secure_url: p.secure_url,
-        alt: p.alt || "",
+        alt: p.alt || form.title || "",
         sort_order: i
       }));
       const orderedNew = newPhotos.map((p, i) => ({
         public_id: p.public_id,
         secure_url: p.secure_url,
-        alt: p.alt || "",
+        alt: p.alt || form.title || "",
         sort_order: orderedExisting.length + i
       }));
 
@@ -209,40 +201,6 @@ export default function BulletinEdit() {
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-3">
-          <div className="col-span-2">
-            <label className="block text-sm mb-1">City</label>
-            <input
-              className="border px-3 py-2 w-full"
-              value={form.city}
-              onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))}
-              placeholder="e.g., Amarillo"
-            />
-          </div>
-          <div>
-            <label className="block text-sm mb-1">State</label>
-            <select
-              className="border px-3 py-2 w-full"
-              value={form.state}
-              onChange={(e) => setForm((f) => ({ ...f, state: e.target.value }))}
-            >
-              {STATES.map((s) => (
-                <option key={s} value={s}>{s || "— Select —"}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-sm mb-1">ZIP (optional)</label>
-          <input
-            className="border px-3 py-2 w-full"
-            value={form.zip}
-            onChange={(e) => setForm((f) => ({ ...f, zip: e.target.value }))}
-          />
-        </div>
-
-        {/* Existing photos list with remove buttons */}
         <div>
           <label className="block text-sm mb-2">Existing Photos</label>
           {existingPhotos.length === 0 ? (
@@ -250,8 +208,8 @@ export default function BulletinEdit() {
           ) : (
             <div className="grid grid-cols-3 gap-2">
               {existingPhotos.map((p, idx) => (
-                <div key={p.public_id || p.secure_url} className="relative">
-                  <img src={p.secure_url} alt={p.alt || ""} className="w-full h-28 object-cover rounded" />
+                <div key={p.public_id || p.secure_url || idx} className="relative">
+                  <img src={p.secure_url} alt={p.alt || form.title || ""} className="w-full h-28 object-cover rounded" />
                   <button
                     type="button"
                     className="absolute top-1 right-1 bg-white/90 border text-xs px-2 py-1 rounded"
@@ -266,7 +224,6 @@ export default function BulletinEdit() {
           )}
         </div>
 
-        {/* New photos uploader (limit to keep total <= 8) */}
         <div>
           <label className="block text-sm mb-1">Add Photos (up to {Math.max(0, 8 - existingPhotos.length)} more)</label>
           <ImageUploader
@@ -284,8 +241,8 @@ export default function BulletinEdit() {
           {newPhotos.length > 0 && (
             <div className="grid grid-cols-3 gap-2 mt-2">
               {newPhotos.map((p, idx) => (
-                <div key={p.public_id || p.secure_url} className="relative">
-                  <img src={p.secure_url} alt={p.alt || ""} className="w-full h-28 object-cover rounded" />
+                <div key={p.public_id || p.secure_url || idx} className="relative">
+                  <img src={p.secure_url} alt={p.alt || form.title || ""} className="w-full h-28 object-cover rounded" />
                   <button
                     type="button"
                     className="absolute top-1 right-1 bg-white/90 border text-xs px-2 py-1 rounded"

@@ -66,18 +66,16 @@ export default function BulletinNew() {
     try {
       const payload = {
         ...form,
-        // normalize empty fields
         price: form.price ? Number(form.price) : null,
         tags: form.tags || [],
-        photos: photos.map((p, i) => ({
+        photos: photos.slice(0, 8).map((p, i) => ({
           public_id: p.public_id,
           secure_url: p.secure_url,
-          alt: p.alt || "",
+          alt: p.alt || form.title || "",
           sort_order: i
         }))
       };
       const id = await createListing(payload);
-      // Go to the newly created listing
       nav(`/bulletin/${id}`);
     } catch (err) {
       console.error(err);

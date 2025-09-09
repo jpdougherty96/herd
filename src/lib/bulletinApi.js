@@ -9,7 +9,7 @@ export async function searchListings({ q = "", state = "", page = 1, pageSize = 
   let query = supabase
     .from("bulletin_listings")
     .select(
-      "id,title,body,price,city,state,created_at,status,bulletin_photos(secure_url,sort_order)",
+      "id,user_id,title,body,price,city,state,created_at,status,poster_name,poster_farm,bulletin_photos(secure_url,sort_order)",
       { count: "exact" }
     )
     .eq("status", "active")
@@ -17,7 +17,7 @@ export async function searchListings({ q = "", state = "", page = 1, pageSize = 
     .range(from, to);
 
   if (q?.trim()) query = query.textSearch("search", q.trim(), { type: "plain" });
-  if (state) query = query.ilike("state", state);
+  if (state) query = query.eq("state", state);
 
   const { data, error, count } = await query;
   if (error) throw error;
@@ -28,7 +28,7 @@ export async function getListing(id) {
   const { data, error } = await supabase
     .from("bulletin_listings")
     .select(
-      "id,title,body,price,category,tags,city,state,zip,created_at,user_id,status,bulletin_photos(secure_url,public_id,alt,sort_order)"
+      "id,title,body,price,category,tags,city,state,zip,created_at,user_id,status,poster_name,poster_farm,bulletin_photos(secure_url,public_id,alt,sort_order)"
     )
     .eq("id", id)
     .single();
@@ -36,26 +36,47 @@ export async function getListing(id) {
   return data;
 }
 
-export async function createListing(payload, photos) {
+/** Create listing: supports createListing(fields, photos) OR createListing({ ...fields, photos }) */
+export async function createListing(payloadOrFields = {}, photosArg) {
   const { data: user } = await supabase.auth.getUser();
   if (!user?.user) throw new Error("Not signed in");
   const user_id = user.user.id;
 
+  // Split photos away from the record that goes into bulletin_listings
+  const { photos: photosInPayload, ...fields } = payloadOrFields || {};
+  const photos = Array.isArray(photosArg)
+    ? photosArg
+    : Array.isArray(photosInPayload)
+    ? photosInPayload
+    : [];
+
   const { data: listing, error } = await supabase
     .from("bulletin_listings")
-    .insert([{ ...payload, user_id }])
+    .insert([{ ...fields, user_id }]) // no `photos` here
     .select()
     .single();
   if (error) throw error;
 
-  await replaceListingPhotos(listing.id, photos);
-  return listing;
+  if (Array.isArray(photos) && photos.length) {
+    await replaceListingPhotos(listing.id, photos);
+  }
+
+  // Return the id (works with pages that expect an id)
+  return listing.id;
 }
 
-export async function updateListing(id, payload, photos = null) {
+/** Update listing: supports updateListing(id, fields, photos) OR updateListing(id, { ...fields, photos }) */
+export async function updateListing(id, payloadOrFields = {}, photosArg = null) {
+  const { photos: photosInPayload, ...fields } = payloadOrFields || {};
+  const photos = Array.isArray(photosArg)
+    ? photosArg
+    : Array.isArray(photosInPayload)
+    ? photosInPayload
+    : null;
+
   const { data, error } = await supabase
     .from("bulletin_listings")
-    .update(payload)
+    .update(fields) // no `photos` here
     .eq("id", id)
     .select()
     .single();
@@ -68,10 +89,7 @@ export async function updateListing(id, payload, photos = null) {
 }
 
 export async function deleteListing(id) {
-  const { error } = await supabase
-    .from("bulletin_listings")
-    .delete()
-    .eq("id", id);
+  const { error } = await supabase.from("bulletin_listings").delete().eq("id", id);
   if (error) throw error;
   return true;
 }
@@ -97,10 +115,11 @@ export async function replaceListingPhotos(listing_id, photos) {
     public_id: p.public_id,
     secure_url: p.secure_url,
     alt: p.alt || "",
-    sort_order: i
+    sort_order: i,
   }));
   // delete old
-  await supabase.from("bulletin_photos").delete().eq("listing_id", listing_id);
+  const { error: delErr } = await supabase.from("bulletin_photos").delete().eq("listing_id", listing_id);
+  if (delErr) throw delErr;
   if (list.length) {
     const { error } = await supabase.from("bulletin_photos").insert(list);
     if (error) throw error;
@@ -112,9 +131,7 @@ export async function sendMessage({ listing_id, recipient_id, body }) {
   const { data: user } = await supabase.auth.getUser();
   if (!user?.user) throw new Error("Not signed in");
   const sender_id = user.user.id;
-  const { error } = await supabase
-    .from("bulletin_messages")
-    .insert([{ listing_id, sender_id, recipient_id, body }]);
+  const { error } = await supabase.from("bulletin_messages").insert([{ listing_id, sender_id, recipient_id, body }]);
   if (error) throw error;
   return true;
 }
@@ -126,9 +143,7 @@ export async function fetchAllMyMessages() {
 
   const { data, error } = await supabase
     .from("bulletin_messages")
-    .select(
-      "id,listing_id,sender_id,recipient_id,body,created_at,read_at,bulletin_listings(title)"
-    )
+    .select("id,listing_id,sender_id,recipient_id,body,created_at,read_at,bulletin_listings(title)")
     .or(`sender_id.eq.${me},recipient_id.eq.${me}`)
     .order("created_at", { ascending: false });
   if (error) throw error;
@@ -146,9 +161,7 @@ export async function fetchThreadMessages(listing_id, other_user_id) {
 
   const { data, error } = await supabase
     .from("bulletin_messages")
-    .select(
-      "id,listing_id,sender_id,recipient_id,body,created_at,read_at,bulletin_listings(title)"
-    )
+    .select("id,listing_id,sender_id,recipient_id,body,created_at,read_at,bulletin_listings(title)")
     .eq("listing_id", listing_id)
     .or(filter)
     .order("created_at", { ascending: true });
@@ -171,13 +184,11 @@ export async function markThreadRead(listing_id, other_user_id) {
   if (error) throw error;
 }
 
+/** Names for sidebar (no emails) */
 export async function fetchProfilesMap(userIds = []) {
   const ids = [...new Set(userIds)].filter(Boolean);
   if (ids.length === 0) return {};
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("id, full_name, name")
-    .in("id", ids);
+  const { data, error } = await supabase.from("profiles").select("id, full_name, name").in("id", ids);
   if (error) {
     console.warn("profiles fetch failed:", error.message);
     return {};
