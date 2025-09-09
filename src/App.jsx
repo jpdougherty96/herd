@@ -22,7 +22,7 @@ import BulletinEdit from "./pages/BulletinEdit";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 
-// Profile page (rewritten)
+// Profile page
 import Profile from "./pages/Profile";
 
 export default function App() {
@@ -53,28 +53,24 @@ export default function App() {
       <Navbar />
       <main className="min-h-[70vh]">
         <Routes>
-          {/* Default → board (gated) */}
-          <Route path="/" element={<PrivateRoute><BulletinList /></PrivateRoute>} />
+          {/* PUBLIC browse */}
+          <Route path="/" element={<BulletinList />} />
+          <Route path="/bulletin" element={<BulletinList />} />
+          <Route path="/bulletin/:id" element={<BulletinDetail />} />
 
-          {/* Bulletin Board */}
-          <Route path="/bulletin" element={<PrivateRoute><BulletinList /></PrivateRoute>} />
+          {/* AUTH required for actions */}
           <Route path="/bulletin/new" element={<PrivateRoute><BulletinNew /></PrivateRoute>} />
-          <Route path="/bulletin/:id" element={<PrivateRoute><BulletinDetail /></PrivateRoute>} />
           <Route path="/bulletin/mine" element={<PrivateRoute><BulletinMine /></PrivateRoute>} />
           <Route path="/bulletin/:id/edit" element={<PrivateRoute><BulletinEdit /></PrivateRoute>} />
-
-          {/* Messages */}
           <Route path="/messages" element={<PrivateRoute><Messages /></PrivateRoute>} />
-
-          {/* Profile (display name for chat) */}
           <Route path="/profile" element={<PrivateRoute><Profile /></PrivateRoute>} />
 
-          {/* Auth */}
+          {/* Auth pages */}
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
 
-          {/* Fallback */}
-          <Route path="*" element={<PrivateRoute><BulletinList /></PrivateRoute>} />
+          {/* Fallback → browse */}
+          <Route path="*" element={<BulletinList />} />
         </Routes>
       </main>
       <Footer />

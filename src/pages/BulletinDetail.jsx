@@ -100,9 +100,15 @@ export default function BulletinDetail() {
 
       <div className="prose mb-6 whitespace-pre-wrap">{listing.body}</div>
 
+      {/* Contact area */}
       {!isOwner && (
         <>
-          {(hasThread || messageSent) ? (
+          {!me ? (
+            <div className="p-3 border rounded bg-amber-50">
+              To contact <strong>{posterName}</strong>, please{" "}
+              <Link className="underline" to={`/login?redirect=/bulletin/${listing.id}`}>log in</Link>.
+            </div>
+          ) : (hasThread || messageSent) ? (
             <div className="p-3 border rounded bg-green-50">
               You already have a conversation with <strong>{posterName}</strong>.{" "}
               <Link className="underline" to={threadLink}>Go to Messages</Link>

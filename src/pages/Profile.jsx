@@ -3,13 +3,15 @@ import React, { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 
+const STATES = [
+  "", "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA",
+  "KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM",
+  "NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA",
+  "WV","WI","WY"
+];
+
 function pickDisplayName(p, user) {
-  return (
-    p?.full_name?.trim() ||
-    p?.name?.trim() ||
-    user?.email?.split("@")[0] ||
-    "—"
-  );
+  return p?.full_name?.trim() || p?.name?.trim() || user?.email?.split("@")[0] || "—";
 }
 
 export default function Profile() {
@@ -25,53 +27,30 @@ export default function Profile() {
     (async () => {
       setLoading(true);
       setMsg("");
-
-      // Pull only the fields we support now (no username / no avatar)
       const { data, error } = await supabase
         .from("profiles")
         .select("id, email, full_name, name, city, state")
         .eq("id", user.id)
         .maybeSingle();
 
-      if (error) {
-        console.error(error);
-        setMsg(error.message);
-        setLoading(false);
-        return;
-      }
+      if (error) { setMsg(error.message); setLoading(false); return; }
 
       if (!data) {
-        // Seed a new profile row if missing
         const seed = {
           id: user.id,
           email: user.email || "",
           full_name: user.user_metadata?.name || null,
           name: user.user_metadata?.name || user.email?.split("@")[0] || null,
         };
-        let insErr = null;
-        try {
-          const { error: e1 } = await supabase.from("profiles").insert(seed);
-          insErr = e1;
-        } catch (e) {
-          insErr = e;
-        }
-        if (insErr) {
-          // Fallback for legacy schema with only 'name'
+        const { error: e1 } = await supabase.from("profiles").insert(seed);
+        if (e1) {
           const { error: e2 } = await supabase
             .from("profiles")
             .insert({ id: user.id, email: user.email || "", name: seed.name || "" });
-          if (e2) {
-            console.error(e2);
-            setMsg("Couldn't create your profile row.");
-          } else {
-            setProfile({ id: user.id, email: user.email || "", name: seed.name || "" });
-          }
-        } else {
-          setProfile(seed);
-        }
-      } else {
-        setProfile(data);
-      }
+          if (e2) setMsg("Couldn't create your profile row.");
+          else setProfile({ id: user.id, email: user.email || "", name: seed.name || "" });
+        } else setProfile(seed);
+      } else setProfile(data);
 
       setLoading(false);
     })();
@@ -80,10 +59,8 @@ export default function Profile() {
   const onSave = async (e) => {
     e.preventDefault();
     if (!profile || !user) return;
-    setSaving(true);
-    setMsg("");
+    setSaving(true); setMsg("");
 
-    // Keep 'name' in sync with 'full_name' for older UIs
     const richUpdate = {
       full_name: profile.full_name ?? null,
       name: profile.full_name?.trim() ? profile.full_name : (profile.name ?? null),
@@ -91,33 +68,18 @@ export default function Profile() {
       state: profile.state ?? null,
     };
 
-    let err = null;
-    try {
-      const { error } = await supabase.from("profiles").update(richUpdate).eq("id", user.id);
-      err = error;
-    } catch (e1) {
-      err = e1;
-    }
-
-    if (err) {
-      // Retry with legacy subset (only 'name', city, state)
+    let { error } = await supabase.from("profiles").update(richUpdate).eq("id", user.id);
+    if (error) {
       const legacy = {
         name: profile.name || profile.full_name || "",
         city: profile.city ?? null,
         state: profile.state ?? null,
       };
-      const { error: err2 } = await supabase.from("profiles").update(legacy).eq("id", user.id);
-      if (err2) {
-        console.error(err2);
-        setMsg(err2.message || "Save failed");
-        setSaving(false);
-        return;
-      }
+      const r = await supabase.from("profiles").update(legacy).eq("id", user.id);
+      if (r.error) { setMsg(r.error.message || "Save failed"); setSaving(false); return; }
     }
 
-    setMsg("Saved!");
-    setEditing(false);
-    setSaving(false);
+    setMsg("Saved!"); setEditing(false); setSaving(false);
   };
 
   if (!user) return <div className="max-w-xl mx-auto p-6">Please log in.</div>;
@@ -131,20 +93,15 @@ export default function Profile() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Your Profile</h1>
         {!editing ? (
-          <button className="px-3 py-2 rounded border" onClick={() => setEditing(true)}>
-            Edit
-          </button>
+          <button className="px-3 py-2 rounded border" onClick={() => setEditing(true)}>Edit</button>
         ) : (
-          <button className="px-3 py-2 rounded border" onClick={() => setEditing(false)}>
-            Cancel
-          </button>
+          <button className="px-3 py-2 rounded border" onClick={() => setEditing(false)}>Cancel</button>
         )}
       </div>
 
       {msg && <div className="rounded border p-2 text-sm">{msg}</div>}
 
       {!editing ? (
-        // View mode
         <div className="bg-white rounded-xl p-4 shadow space-y-2">
           <div className="text-sm text-stone-600">Email</div>
           <div className="mb-3">{profile.email || user.email}</div>
@@ -159,7 +116,6 @@ export default function Profile() {
           <div className="mb-3">{profile.state || "—"}</div>
         </div>
       ) : (
-        // Edit mode
         <form onSubmit={onSave} className="space-y-3 bg-white rounded-xl p-4 shadow">
           <div className="text-sm text-stone-600">Email</div>
           <div className="mb-3">{profile.email || user.email}</div>
@@ -169,13 +125,7 @@ export default function Profile() {
             <input
               className="border rounded p-2 w-full"
               value={profile.full_name ?? profile.name ?? ""}
-              onChange={(e) =>
-                setProfile((p) => ({
-                  ...p,
-                  full_name: e.target.value,
-                  name: e.target.value, // keep legacy 'name' in sync
-                }))
-              }
+              onChange={(e) => setProfile((p) => ({ ...p, full_name: e.target.value, name: e.target.value }))}
               placeholder="e.g., John Dougherty"
             />
           </div>
@@ -191,11 +141,15 @@ export default function Profile() {
             </div>
             <div>
               <label className="block text-sm mb-1">State</label>
-              <input
+              <select
                 className="border rounded p-2 w-full"
                 value={profile.state ?? ""}
                 onChange={(e) => setProfile((p) => ({ ...p, state: e.target.value }))}
-              />
+              >
+                {STATES.map((s) => (
+                  <option key={s} value={s}>{s || "— Select —"}</option>
+                ))}
+              </select>
             </div>
           </div>
 

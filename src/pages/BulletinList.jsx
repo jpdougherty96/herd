@@ -49,7 +49,7 @@ export default function BulletinList() {
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold">HERD Bulletin Board</h1>
         <div className="flex gap-4">
-          <Link to="/bulletin/mine" className="underline">My Listings</Link>
+          {/* Removed 'My Listings' (in navbar already) */}
           <Link to="/bulletin/new" className="underline">Post a Listing</Link>
         </div>
       </div>
