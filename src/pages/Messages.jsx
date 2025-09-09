@@ -128,15 +128,28 @@ export default function Messages() {
     });
   }
 
+  function backToList() {
+    // Mobile-only: return to conversation list
+    setActive(null);
+    setSp(params => {
+      const next = new URLSearchParams(params);
+      next.delete("listing");
+      next.delete("user");
+      return next;
+    }, { replace: true });
+  }
+
   const sidebar = (
-    <div className="border-r w-full md:w-80">
-      <div className="p-3 font-semibold">Conversations</div>
+    <div className="border-r w-full md:w-80 flex flex-col">
+      <div className="p-3 font-semibold sticky top-0 bg-white/90 backdrop-blur z-10 border-b md:border-b-0">
+        Conversations
+      </div>
       {loading ? (
         <div className="p-3 text-sm text-gray-600">Loading…</div>
       ) : threads.length === 0 ? (
         <div className="p-3 text-sm text-gray-600">No messages yet.</div>
       ) : (
-        <ul className="divide-y">
+        <ul className="divide-y overflow-y-auto">
           {threads.map(t => {
             const profile = profiles[t.other_id];
             const name = displayName(profile, t.other_id);
@@ -174,13 +187,25 @@ export default function Messages() {
         <div className="p-4 text-sm text-gray-600">Select a conversation.</div>
       ) : (
         <>
-          <div className="border-b p-3">
-            <div className="font-semibold">
-              {threads.find(x => x.listing_id === active.listing_id && x.other_id === active.other_id)?.listing_title || "Listing"}
-            </div>
-            <div className="text-sm text-gray-600 flex items-center gap-2">
-              <Avatar name={displayName(profiles[active.other_id], active.other_id)} id={active.other_id} />
-              With {displayName(profiles[active.other_id], active.other_id)}
+          <div className="border-b p-3 flex items-center gap-2 sticky top-0 bg-white/90 backdrop-blur z-10">
+            {/* Back button: visible on mobile only */}
+            <button
+              className="md:hidden inline-flex items-center justify-center h-9 w-9 rounded hover:bg-stone-100"
+              aria-label="Back to list"
+              onClick={backToList}
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M15 6l-6 6 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+            <div className="flex-1 min-w-0">
+              <div className="font-semibold truncate">
+                {threads.find(x => x.listing_id === active.listing_id && x.other_id === active.other_id)?.listing_title || "Listing"}
+              </div>
+              <div className="text-sm text-gray-600 flex items-center gap-2 truncate">
+                <Avatar name={displayName(profiles[active.other_id], active.other_id)} id={active.other_id} />
+                With {displayName(profiles[active.other_id], active.other_id)}
+              </div>
             </div>
           </div>
 
@@ -206,15 +231,15 @@ export default function Messages() {
             <div ref={chatEndRef} />
           </div>
 
-          <form onSubmit={onSend} className="border-t p-3 flex gap-2">
+          <form onSubmit={onSend} className="border-t p-2 md:p-3 flex gap-2 sticky bottom-0 bg-white">
             <textarea
-              className="border flex-1 px-3 py-2 h-20"
-              placeholder={`Message ${displayName(profiles[active.other_id], active.other_id)}…`}
+              className="border flex-1 px-3 py-2 h-12 md:h-20 rounded"
+              placeholder={active ? `Message ${displayName(profiles[active.other_id], active.other_id)}…` : "Type a message…"}
               value={draft}
               onChange={e => setDraft(e.target.value)}
               required
             />
-            <button className="border px-4 py-2 self-end">Send</button>
+            <button className="border px-4 py-2 self-end h-12 md:h-auto rounded">Send</button>
           </form>
         </>
       )}
@@ -222,9 +247,21 @@ export default function Messages() {
   );
 
   return (
-    <div className="mx-auto max-w-6xl h-[calc(100vh-8rem)] md:h-[70vh] border rounded overflow-hidden flex">
-      {sidebar}
-      {chat}
+    <div className="mx-auto max-w-6xl">
+      {/* Desktop/tablet: two-pane */}
+      <div className="hidden md:flex md:h-[70vh] border rounded overflow-hidden">
+        {sidebar}
+        {chat}
+      </div>
+
+      {/* Mobile: single-pane (list OR chat) */}
+      <div className="md:hidden">
+        {!active ? (
+          <div className="border rounded overflow-hidden">{sidebar}</div>
+        ) : (
+          <div className="border rounded overflow-hidden">{chat}</div>
+        )}
+      </div>
     </div>
   );
 }
@@ -270,10 +307,10 @@ function MessageBubble({ me, name, otherId, body, created_at }) {
   const bubbleClass = me ? "bg-green-600 text-white" : `${colorClassForId(otherId)} text-white`;
   const wrapClass = me ? "ml-auto text-right" : "";
   return (
-    <div className={`max-w-[80%] ${wrapClass}`}>
+    <div className={`max-w-[85%] md:max-w-[70%] ${wrapClass}`}>
       <div className="text-[11px] text-gray-500 mb-1">{name}</div>
       <div className={`inline-block px-3 py-2 rounded ${bubbleClass}`}>
-        <div className="whitespace-pre-wrap">{body}</div>
+        <div className="whitespace-pre-wrap break-words">{body}</div>
       </div>
       <div className="text-[10px] text-gray-500 mt-1">{new Date(created_at).toLocaleString()}</div>
     </div>

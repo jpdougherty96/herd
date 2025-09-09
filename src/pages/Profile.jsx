@@ -27,9 +27,10 @@ export default function Profile() {
     (async () => {
       setLoading(true);
       setMsg("");
+
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, email, full_name, name, city, state")
+        .select("id, full_name, name, farm_name, city, state")
         .eq("id", user.id)
         .maybeSingle();
 
@@ -38,17 +39,19 @@ export default function Profile() {
       if (!data) {
         const seed = {
           id: user.id,
-          email: user.email || "",
           full_name: user.user_metadata?.name || null,
           name: user.user_metadata?.name || user.email?.split("@")[0] || null,
+          farm_name: null,
+          city: null,
+          state: null,
         };
         const { error: e1 } = await supabase.from("profiles").insert(seed);
         if (e1) {
           const { error: e2 } = await supabase
             .from("profiles")
-            .insert({ id: user.id, email: user.email || "", name: seed.name || "" });
+            .insert({ id: user.id, name: seed.name || "" });
           if (e2) setMsg("Couldn't create your profile row.");
-          else setProfile({ id: user.id, email: user.email || "", name: seed.name || "" });
+          else setProfile({ id: user.id, name: seed.name || "", farm_name: null, city: null, state: null });
         } else setProfile(seed);
       } else setProfile(data);
 
@@ -61,23 +64,16 @@ export default function Profile() {
     if (!profile || !user) return;
     setSaving(true); setMsg("");
 
-    const richUpdate = {
+    const update = {
       full_name: profile.full_name ?? null,
       name: profile.full_name?.trim() ? profile.full_name : (profile.name ?? null),
+      farm_name: profile.farm_name ?? null,
       city: profile.city ?? null,
       state: profile.state ?? null,
     };
 
-    let { error } = await supabase.from("profiles").update(richUpdate).eq("id", user.id);
-    if (error) {
-      const legacy = {
-        name: profile.name || profile.full_name || "",
-        city: profile.city ?? null,
-        state: profile.state ?? null,
-      };
-      const r = await supabase.from("profiles").update(legacy).eq("id", user.id);
-      if (r.error) { setMsg(r.error.message || "Save failed"); setSaving(false); return; }
-    }
+    const { error } = await supabase.from("profiles").update(update).eq("id", user.id);
+    if (error) { setMsg(error.message || "Save failed"); setSaving(false); return; }
 
     setMsg("Saved!"); setEditing(false); setSaving(false);
   };
@@ -104,10 +100,13 @@ export default function Profile() {
       {!editing ? (
         <div className="bg-white rounded-xl p-4 shadow space-y-2">
           <div className="text-sm text-stone-600">Email</div>
-          <div className="mb-3">{profile.email || user.email}</div>
+          <div className="mb-3">{user.email}</div>
 
           <div className="text-sm text-stone-600">Display name</div>
           <div className="mb-3">{displayName}</div>
+
+          <div className="text-sm text-stone-600">Farm name</div>
+          <div className="mb-3">{profile.farm_name || "—"}</div>
 
           <div className="text-sm text-stone-600">City</div>
           <div className="mb-3">{profile.city || "—"}</div>
@@ -118,15 +117,25 @@ export default function Profile() {
       ) : (
         <form onSubmit={onSave} className="space-y-3 bg-white rounded-xl p-4 shadow">
           <div className="text-sm text-stone-600">Email</div>
-          <div className="mb-3">{profile.email || user.email}</div>
+          <div className="mb-3">{user.email}</div>
 
           <div>
-            <label className="block text-sm mb-1">Full name (shown in messages)</label>
+            <label className="block text-sm mb-1">Full name (shown in messages & listings)</label>
             <input
               className="border rounded p-2 w-full"
               value={profile.full_name ?? profile.name ?? ""}
               onChange={(e) => setProfile((p) => ({ ...p, full_name: e.target.value, name: e.target.value }))}
               placeholder="e.g., John Dougherty"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm mb-1">Farm name (optional)</label>
+            <input
+              className="border rounded p-2 w-full"
+              value={profile.farm_name ?? ""}
+              onChange={(e) => setProfile((p) => ({ ...p, farm_name: e.target.value }))}
+              placeholder="e.g., Green Pastures Farm"
             />
           </div>
 
