@@ -14,7 +14,7 @@ const corsHeaders = {
 const STRIPE_SECRET = Deno.env.get("STRIPE_SECRET_KEY")!;
 const SB_URL = Deno.env.get("SB_URL")!;
 const SB_SERVICE_ROLE_KEY = Deno.env.get("SB_SERVICE_ROLE_KEY")!;
-const SITE_URL = Deno.env.get("SITE_URL") || "http://localhost:3000";
+const SITE_URL = Deno.env.get("SITE_URL") || "https://herd.rent";
 
 const stripe = new Stripe(STRIPE_SECRET, { httpClient: Stripe.createFetchHttpClient() });
 const admin = createClient(SB_URL, SB_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
